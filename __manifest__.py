@@ -1,24 +1,26 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Método de Costeo - Último Precio de Compra',
-    'version': '18.0.1.0.0',
+    'name': 'Actualizar Costo al Recibir Compra',
+    'version': '18.0.2.0.0',
     'category': 'Inventory/Inventory',
-    'summary': 'Agrega el método de costeo "Último Precio de Compra" a las categorías de producto.',
+    'summary': 'Actualiza el costo del producto con el último precio de compra al validar la recepción (método de costeo nativo).',
     'description': """
-Método de Costeo - Último Precio de Compra
-===========================================
+Actualizar Costo al Recibir Compra
+==================================
 
-Este módulo agrega un nuevo método de costeo en las categorías de producto:
-**Último Precio de Compra**.
+Agrega un check **"Actualizar costo al recibir compra"** en las categorías de
+producto. Cuando está activo (y la categoría usa el método de costeo nativo
+**Precio Estándar**), al validar una recepción de compra el costo del
+producto se actualiza con el precio unitario neto de esa recepción:
 
-Funcionamiento:
-* Al recibir mercadería proveniente de una compra, el costo del producto se
-  actualiza automáticamente con el precio unitario de esa recepción.
-* No se realizan cálculos de promedio ponderado (AVCO) ni FIFO.
-* Las salidas de stock usan el último costo registrado.
+* Se aplican todos los descuentos de la línea de compra, incluidos los
+  descuentos 2 y 3 de ``sp_purchase_multi_discount`` si está instalado.
+* Se respeta la conversión de moneda, incluida la cotización manual del
+  picking (``stock_currency_valuation``) si existe.
+* El stock preexistente se revaloriza al nuevo costo (comportamiento nativo
+  de Precio Estándar).
 
-Requiere que los productos tengan activada la valoración de inventario
-(manual o automática).
+El método de costeo y la valoración son 100% nativos de Odoo.
     """,
     'author': 'Aftermoves',
     'website': 'https://aftermoves.com',
@@ -27,7 +29,9 @@ Requiere que los productos tengan activada la valoración de inventario
         'stock_account',
         'purchase_stock',
     ],
-    'data': [],
+    'data': [
+        'views/product_category_views.xml',
+    ],
     'demo': [],
     'installable': True,
     'application': False,

@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Extensión de product.category para agregar el método de costeo
-'Último Precio de Compra'.
+Extensión de product.category: check 'Actualizar costo al recibir compra'.
+
+No agrega métodos de costeo nuevos: la categoría usa el nativo Precio
+Estándar. El check habilita que, al validar una recepción de compra, el
+costo del producto se actualice con el precio unitario neto de la recepción.
 """
 
 from odoo import models, fields
@@ -10,17 +13,13 @@ from odoo import models, fields
 class ProductCategory(models.Model):
     _inherit = 'product.category'
 
-    property_cost_method = fields.Selection([
-        ('standard', 'Standard Price'),
-        ('fifo', 'First In First Out (FIFO)'),
-        ('average', 'Average Cost (AVCO)'),
-        ('last_purchase_price', 'Último Precio de Compra'),
-    ], string="Costing Method",
-        company_dependent=True, copy=True,
-        help="""Standard Price: The products are valued at their standard cost defined on the product.
-        Average Cost (AVCO): The products are valued at weighted average cost.
-        First In First Out (FIFO): The products are valued supposing those that enter the company first will also leave it first.
-        Último Precio de Compra: El costo del producto se actualiza automáticamente con el último precio pagado en una recepción de compra, sin realizar cálculos adicionales.
-        """,
+    update_cost_on_receipt = fields.Boolean(
+        string='Actualizar costo al recibir compra',
+        copy=True,
         tracking=True,
+        help="Solo aplica con el método de costeo Precio Estándar. Si está "
+             "activo, al validar una recepción de compra el costo del "
+             "producto se actualiza con el precio unitario neto de esa "
+             "recepción (con todos los descuentos aplicados) y el stock "
+             "preexistente se revaloriza al nuevo costo.",
     )

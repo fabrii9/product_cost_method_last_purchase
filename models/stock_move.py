@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Extensión de stock.move para el método de costeo 'Último Precio de Compra'.
-Cuando se recibe mercadería proveniente de una compra, el costo del producto
-pasa a ser el precio unitario de la recepción, sin aplicar promedios ni FIFO.
+Actualización del costo al recibir compras (método de costeo nativo).
+
+Para productos de categorías con método de costeo Precio Estándar y el check
+'Actualizar costo al recibir compra' activo, al validar una recepción de
+compra el costo del producto se actualiza con el precio unitario neto de la
+recepción (todos los descuentos aplicados). El resto del comportamiento de
+valoración es 100% nativo de Odoo.
 """
 
 from odoo import models
@@ -13,21 +17,25 @@ class StockMove(models.Model):
     _inherit = 'stock.move'
 
     def product_price_update_before_done(self, forced_qty=None):
-        """Actualiza el costo estándar al último precio de compra.
+        """Actualiza el costo estándar al último precio de compra neto.
 
-        Para productos cuya categoría utiliza el método de costeo
-        'last_purchase_price', el costo del producto se reemplaza por el
-        precio unitario de la recepción sin realizar ningún cálculo adicional.
+        Solo para recepciones de productos cuya categoría usa Precio Estándar
+        y tiene activo el check 'Actualizar costo al recibir compra'. El
+        write del costo se hace SIN disable_auto_svl para que el core genere
+        la capa de revalorización del stock preexistente (comportamiento
+        nativo de Precio Estándar).
         """
-        last_purchase_moves = self.filtered(
-            lambda m: m.with_company(m.company_id).product_id.cost_method == 'last_purchase_price' and m._is_in()
+        update_moves = self.filtered(
+            lambda m: m.with_company(m.company_id).product_id.cost_method == 'standard'
+            and m.with_company(m.company_id).product_id.categ_id.update_cost_on_receipt
+            and m._is_in()
         )
-        other_moves = self - last_purchase_moves
+        other_moves = self - update_moves
 
-        # Mantener el comportamiento estándar de Odoo para AVCO y otros métodos.
+        # Mantener el comportamiento estándar de Odoo para el resto.
         super(StockMove, other_moves).product_price_update_before_done(forced_qty=forced_qty)
 
-        for move in last_purchase_moves:
+        for move in update_moves:
             move = move.with_company(move.company_id)
             product = move.product_id
             move_cost = move._get_last_purchase_price_unit()
@@ -37,19 +45,18 @@ class StockMove(models.Model):
                 for lot, unit_cost in move_cost.items():
                     if float_is_zero(unit_cost, precision_digits=precision):
                         continue
-                    # Actualizar el costo del lote y del producto con el último precio.
                     if lot:
-                        lot.with_company(move.company_id).with_context(disable_auto_svl=True).sudo().write({
+                        lot.with_company(move.company_id).sudo().write({
                             'standard_price': unit_cost,
                         })
-                    product.with_company(move.company_id).with_context(disable_auto_svl=True).sudo().write({
+                    product.with_company(move.company_id).sudo().write({
                         'standard_price': unit_cost,
                     })
             else:
                 unit_cost = next(iter(move_cost.values()))
                 if float_is_zero(unit_cost, precision_digits=precision):
                     continue
-                product.with_company(move.company_id).with_context(disable_auto_svl=True).sudo().write({
+                product.with_company(move.company_id).sudo().write({
                     'standard_price': unit_cost,
                 })
 
@@ -62,8 +69,8 @@ class StockMove(models.Model):
         factura antes de recibir, el core solo usa el descuento nativo de la
         factura) o incluso ignorar el descuento nativo (``stock_currency_valuation``
         usa el ``price_unit`` bruto cuando el picking tiene cotización manual).
-        Por eso, para el método 'Último Precio de Compra', el costo se calcula
-        directamente desde el precio neto de la línea de compra.
+        Por eso el costo se calcula directamente desde el precio neto de la
+        línea de compra.
 
         Devuelve el mismo formato que ``_get_price_unit``: un dict
         {stock.lot: precio} (con el lote vacío si el producto no se valúa por lote).

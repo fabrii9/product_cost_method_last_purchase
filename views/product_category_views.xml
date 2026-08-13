@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="product_category_form_update_cost_on_receipt" model="ir.ui.view">
+        <field name="name">product.category.form.update.cost.on.receipt</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_form_view"/>
+        <field name="arch" type="xml">
+            <field name="property_cost_method" position="after">
+                <field name="update_cost_on_receipt"
+                       invisible="property_cost_method != 'standard'"/>
+            </field>
+        </field>
+    </record>
+</odoo>
