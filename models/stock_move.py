@@ -7,10 +7,18 @@ Para productos de categorías con método de costeo Precio Estándar y el check
 compra el costo del producto se actualiza con el precio unitario neto de la
 recepción (todos los descuentos aplicados). El resto del comportamiento de
 valoración es 100% nativo de Odoo.
+
+El cambio de costo queda registrado en el chatter del producto, indicando el
+costo anterior, el nuevo, la variación y la recepción que lo originó: la
+revalorización del stock preexistente es silenciosa en Odoo y sin esta traza
+solo queda la capa de valoración para reconstruir qué pasó.
 """
 
-from odoo import models
-from odoo.tools import float_is_zero
+from markupsafe import Markup
+
+from odoo import models, _
+from odoo.tools import float_is_zero, float_compare
+from odoo.tools.misc import formatLang
 
 
 class StockMove(models.Model):
@@ -49,16 +57,68 @@ class StockMove(models.Model):
                         lot.with_company(move.company_id).sudo().write({
                             'standard_price': unit_cost,
                         })
+                    old_cost = product.with_company(move.company_id).standard_price
                     product.with_company(move.company_id).sudo().write({
                         'standard_price': unit_cost,
                     })
+                    move._log_cost_update(product, old_cost, unit_cost, lot=lot)
             else:
                 unit_cost = next(iter(move_cost.values()))
                 if float_is_zero(unit_cost, precision_digits=precision):
                     continue
+                old_cost = product.with_company(move.company_id).standard_price
                 product.with_company(move.company_id).sudo().write({
                     'standard_price': unit_cost,
                 })
+                move._log_cost_update(product, old_cost, unit_cost)
+
+    def _log_cost_update(self, product, old_cost, new_cost, lot=None):
+        """Deja constancia del cambio de costo en el chatter del producto.
+
+        Se postea sobre la plantilla (es donde el usuario mira el historial) y
+        solo si el costo efectivamente cambió, para no ensuciar el chatter con
+        recepciones que reconfirman el mismo precio.
+        """
+        self.ensure_one()
+        precision = self.env['decimal.precision'].precision_get('Product Price')
+        if float_compare(old_cost, new_cost, precision_digits=precision) == 0:
+            return
+
+        currency = self.company_id.currency_id
+        variation = ''
+        if not float_is_zero(old_cost, precision_digits=precision):
+            pct = (new_cost - old_cost) / old_cost * 100.0
+            variation = ' (%s%s %%)' % ('+' if pct >= 0 else '', round(pct, 2))
+
+        origin = self.picking_id.name or self.reference or ''
+        purchase = self.purchase_line_id.order_id
+
+        # formatLang devuelve HTML (usa &nbsp; como separador), por eso los
+        # importes se envuelven en Markup: de lo contrario el escapado los
+        # mostraría literales en el chatter.
+        headline = _(
+            'Costo actualizado por recepción de compra: %(old)s → %(new)s%(variation)s',
+            old=Markup(formatLang(self.env, old_cost, currency_obj=currency)),
+            new=Markup(formatLang(self.env, new_cost, currency_obj=currency)),
+            variation=variation,
+        )
+        details = []
+        if origin:
+            details.append(_('Recepción: %s', origin))
+        if purchase:
+            details.append(_('Orden de compra: %s', purchase.name))
+        if lot:
+            details.append(_('Lote: %s', lot.name))
+
+        # El chatter interpreta HTML: se arma con Markup para que los saltos de
+        # línea y el formato de moneda se vean correctamente.
+        body = Markup('<p>') + headline + Markup('</p>')
+        if details:
+            body += Markup('<ul>%s</ul>') % Markup('').join(
+                Markup('<li>%s</li>') % d for d in details
+            )
+
+        product.product_tmpl_id.sudo().message_post(body=body)
 
     def _get_last_purchase_price_unit(self):
         """Precio unitario de la recepción con TODOS los descuentos aplicados.

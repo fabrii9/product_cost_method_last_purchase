@@ -8,6 +8,8 @@
             <field name="property_cost_method" position="after">
                 <field name="update_cost_on_receipt"
                        invisible="property_cost_method != 'standard'"/>
+                <field name="cost_deviation_alert_pct"
+                       invisible="property_cost_method != 'standard' or not update_cost_on_receipt"/>
             </field>
         </field>
     </record>

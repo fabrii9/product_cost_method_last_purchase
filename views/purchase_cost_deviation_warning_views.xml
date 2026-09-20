@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="purchase_cost_deviation_warning_form" model="ir.ui.view">
+        <field name="name">purchase.cost.deviation.warning.form</field>
+        <field name="model">purchase.cost.deviation.warning</field>
+        <field name="arch" type="xml">
+            <form string="Revisar precios de compra">
+                <div class="alert alert-warning" role="alert">
+                    <strong>Verificá los precios antes de confirmar</strong>
+                </div>
+                <field name="message" readonly="1" nolabel="1"
+                       widget="text" options="{'no_open': True}"/>
+                <field name="order_ids" invisible="1"/>
+                <footer>
+                    <button name="action_confirm" type="object"
+                            string="Confirmar de todas formas"
+                            class="btn-warning"/>
+                    <button name="action_review" type="object"
+                            string="Revisar precios"
+                            class="btn-primary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

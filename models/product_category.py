@@ -23,3 +23,14 @@ class ProductCategory(models.Model):
              "recepción (con todos los descuentos aplicados) y el stock "
              "preexistente se revaloriza al nuevo costo.",
     )
+    cost_deviation_alert_pct = fields.Float(
+        string='Desvío máximo de costo (%)',
+        default=0.0,
+        tracking=True,
+        help="Umbral de variación entre el precio de compra y el costo actual "
+             "del producto. Si es mayor a cero, al confirmar una orden de "
+             "compra se muestra una advertencia por cada línea cuyo precio "
+             "neto se desvíe más de este porcentaje respecto del costo "
+             "vigente. Es solo un aviso: no impide confirmar la orden. "
+             "En cero, no se controla nada.",
+    )
