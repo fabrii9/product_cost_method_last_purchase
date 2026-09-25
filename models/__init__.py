@@ -3,3 +3,4 @@
 from . import product_category
 from . import stock_move
 from . import purchase_order
+from . import stock_landed_cost

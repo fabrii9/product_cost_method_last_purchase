@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Actualizar Costo al Recibir Compra',
-    'version': '18.0.3.0.0',
+    'version': '18.0.4.0.0',
     'category': 'Inventory/Inventory',
     'summary': 'Actualiza el costo del producto con el último precio de compra al validar la recepción (método de costeo nativo).',
     'description': """
@@ -41,6 +41,21 @@ antes de confirmar:
   porcentaje configurado en la categoría (campo *Desvío máximo de costo*), se
   muestra una advertencia con el detalle. Es confirmable, y la confirmación
   queda registrada en el chatter de la orden.
+
+Costos en destino
+-----------------
+
+Los costos en destino nativos solo aceptan productos PEPS o Costo Promedio.
+Con este módulo también se aplican a productos Precio Estándar de categorías
+con el check activo. Al validar el costo en destino:
+
+* Si la recepción es la última compra recibida del producto, el costo pasa a
+  ser el precio neto de compra más todos los costos en destino validados de
+  esa recepción, por unidad. El stock preexistente se revaloriza.
+* Si ya hubo una recepción de compra posterior, el último costo no se pisa:
+  el gasto se distribuye sobre el stock actual.
+
+El cambio queda registrado en el chatter del producto.
 """,
     'author': 'Aftermoves',
     'website': 'https://aftermoves.com',
@@ -48,6 +63,7 @@ antes de confirmar:
     'depends': [
         'stock_account',
         'purchase_stock',
+        'stock_landed_costs',
     ],
     'data': [
         'security/ir.model.access.csv',
